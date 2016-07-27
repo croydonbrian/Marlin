@@ -39,7 +39,7 @@ class CardReader {
 public:
   CardReader();
 
-  void initsd();
+  void initsd(bool silent=false);
   void write_command(char *buf);
   // Files auto[0-9].g on the sd card are performed in sequence.
   // This is to delay autostart and hence the initialisation of
@@ -209,10 +209,11 @@ private:
 
 #if PIN_EXISTS(SD_DETECT)
   #if ENABLED(SD_DETECT_INVERTED)
-    #define IS_SD_INSERTED (READ(SD_DETECT_PIN) == HIGH)
+    #define SD_INSERT_STATE true
   #else
-    #define IS_SD_INSERTED (READ(SD_DETECT_PIN) == LOW)
+    #define SD_INSERT_STATE false
   #endif
+  #define IS_SD_INSERTED (SD_INSERT_STATE == (READ(SD_DETECT_PIN) != LOW))
 #else
   // No card detect line? Assume the card is inserted.
   #define IS_SD_INSERTED true

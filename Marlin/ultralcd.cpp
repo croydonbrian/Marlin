@@ -5131,8 +5131,19 @@ void lcd_update() {
 
   #if ENABLED(SDSUPPORT) && PIN_EXISTS(SD_DETECT)
 
+    // To handle the pin detect behavior for locked SD cards
+    // check the time interval between "insert" and "remove."
+    // If the "remove" follows the "insert" by less than 1s
+    // the card init is retried.
+    static millis_t last_sdpin_change = 0;
+    static bool last_real_sd_status = !SD_INSERT_STATE;
+
+    // Wait for the real pin state to change
     const bool sd_status = IS_SD_INSERTED;
-    if (sd_status != lcd_sd_status && lcd_detected()) {
+    if (sd_status != last_real_sd_status && lcd_detected()) {
+      last_real_sd_status = sd_status;
+      millis_t sdpin_interval = millis() - last_sdpin_change;
+      last_sdpin_change = millis();
 
       bool old_sd_status = lcd_sd_status; // prevent re-entry to this block!
       lcd_sd_status = sd_status;
@@ -5153,6 +5164,33 @@ void lcd_update() {
           currentScreen == lcd_status_screen ? CHARSET_INFO : CHARSET_MENU
         #endif
       );
+
+      card.release();
+
+      // Was the card "removed" in under a second?
+      const bool spurious = (!sd_status && sdpin_interval < 1000UL);
+
+      // Init on "insert" or spurious "remove"
+      if (sd_status || spurious) {
+        safe_delay(1000); // some boards need a delay or the LCD won't show the new status
+        card.initsd();
+        sd_status = card.cardOK;
+        if (spurious && sd_status) { // Card is OK after all!
+          SERIAL_ECHO_START();
+          SERIAL_ECHOLNPGM(MSG_SD_LOCKED);
+        }
+      }
+
+      // Status is new, or first since lcd_init
+      if (lcd_sd_status != sd_status) {
+        if (lcd_sd_status != 2) { // Not unknown
+          if (sd_status)
+            LCD_MESSAGEPGM(MSG_SD_INSERTED);
+          else
+            LCD_MESSAGEPGM(MSG_SD_REMOVED);
+        }
+        lcd_sd_status = sd_status; // remember the real status
+      }
     }
 
   #endif // SDSUPPORT && SD_DETECT_PIN
