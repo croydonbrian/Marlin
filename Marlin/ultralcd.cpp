@@ -5158,6 +5158,12 @@ void lcd_update() {
         if (old_sd_status != 2) LCD_MESSAGEPGM(MSG_SD_REMOVED);
       }
 
+      if (DEBUGGING(INFO)) {
+        SERIAL_ECHO_START();
+        SERIAL_ECHOPAIR("New sd_status: ", sd_status ? "true" : "false");
+        SERIAL_EOL();
+      }
+
       lcd_refresh();
       lcd_implementation_init( // to maybe revive the LCD if static electricity killed it.
         #if ENABLED(LCD_PROGRESS_BAR)
