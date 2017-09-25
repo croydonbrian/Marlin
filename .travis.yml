@@ -79,4 +79,5 @@ script:
   #
   # Build with the default configurations
   #
+  - arduino --install-boards sanguino:avr
   - build_marlin sanguino:cpu=atmega1284p
