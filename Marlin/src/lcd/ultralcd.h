@@ -23,6 +23,12 @@
 
 #include "../inc/MarlinConfig.h"
 
+#if HAS_BUZZER
+  #include "../libs/buzzer.h"
+#endif
+
+#define HAS_ENCODER_ACTION (HAS_LCD_MENU || ENABLED(ULTIPANEL_FEEDMULTIPLY))
+
 #if HAS_SPI_LCD
 
   #include "../Marlin.h"
@@ -31,16 +37,6 @@
     #include "../feature/pause.h"
     #include "../module/motion.h" // for active_extruder
   #endif
-
-#endif
-
-#if HAS_BUZZER
-  #include "../libs/buzzer.h"
-#endif
-
-#define HAS_ENCODER_ACTION (HAS_LCD_MENU || ENABLED(ULTIPANEL_FEEDMULTIPLY))
-
-#if HAS_SPI_LCD
 
   enum LCDViewAction : uint8_t {
     LCDVIEW_NONE,
@@ -242,131 +238,141 @@ public:
   static void clear_lcd();
   static void init_lcd();
 
+  #if HAS_SPI_LCD || ENABLED(MALYAN_LCD) || ENABLED(PANELDUE) || ENABLED(EXTENSIBLE_UI)
+    static void setalertstatusPGM(PGM_P message);
+    static void reset_status();
+  #else // NO LCD
+    static inline void setalertstatusPGM(PGM_P message) { UNUSED(message); }
+    static inline void reset_status() {}
+  #endif
+
   #if HAS_SPI_LCD || ENABLED(MALYAN_LCD) || ENABLED(EXTENSIBLE_UI)
     static void init();
     static void update();
-    static void setalertstatusPGM(PGM_P message);
-  #else // NO LCD
+  #else // PANELDUE or NO LCD
     static inline void init() {}
     static inline void update() {}
-    static inline void setalertstatusPGM(PGM_P message) { UNUSED(message); }
+  #endif
+
+  #if HAS_SPI_LCD || ENABLED(PANELDUE) || ENABLED(EXTENSIBLE_UI)
+    static void setstatus(const char* const message, const bool persist=false);
+    static void setstatusPGM(PGM_P const message, const int8_t level=0);
+  #else // MALYAN_LCD or NO LCD
+    static inline void setstatus(const char* const message, const bool persist=false) { UNUSED(message); UNUSED(persist); }
+    static inline void setstatusPGM(PGM_P const message, const int8_t level=0) { UNUSED(message); UNUSED(level); }
+  #endif
+
+  #if HAS_SPI_LCD || ENABLED(PANELDUE)
+    #if HAS_PRINT_PROGRESS
+      #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
+        static uint8_t progress_percent;
+        static void set_progress(const uint8_t progress) { progress_percent = MIN(progress, 100); }
+      #endif
+      static uint8_t get_progress();
+    #else
+      static constexpr uint8_t get_progress() { return 0; }
+    #endif
+  #endif
+
+  #if HAS_SPI_LCD
+
+    static bool detected();
+
+    static LCDViewAction lcdDrawUpdate;
+    static inline bool should_draw() { return bool(lcdDrawUpdate); }
+    static inline void refresh(const LCDViewAction type) { lcdDrawUpdate = type; }
+    static inline void refresh() { refresh(LCDVIEW_CLEAR_CALL_REDRAW); }
+
+    #if ENABLED(SHOW_BOOTSCREEN)
+      static void show_bootscreen();
+    #endif
+
+    #if HAS_GRAPHICAL_LCD
+
+      static bool drawing_screen, first_page;
+
+      static void set_font(const MarlinFont font_nr);
+
+    #else
+
+      static constexpr bool drawing_screen = false, first_page = true;
+
+      enum HD44780CharSet : uint8_t { CHARSET_MENU, CHARSET_INFO, CHARSET_BOOT };
+
+      static void set_custom_characters(
+        #if ENABLED(LCD_PROGRESS_BAR) || ENABLED(SHOW_BOOTSCREEN)
+          const HD44780CharSet screen_charset=CHARSET_INFO
+        #endif
+      );
+
+      #if ENABLED(LCD_PROGRESS_BAR)
+        static millis_t progress_bar_ms;  // Start time for the current progress bar cycle
+        #if PROGRESS_MSG_EXPIRE > 0
+          static millis_t MarlinUI::expire_status_ms; // = 0
+          static inline void reset_progress_bar_timeout() { expire_status_ms = 0; }
+        #endif
+        #define LCD_SET_CHARSET(C) set_custom_characters(C)
+      #else
+        #define LCD_SET_CHARSET(C) set_custom_characters()
+      #endif
+
+    #endif
+
+    // Status message
+    static char status_message[];
+    static inline void reset_alert_level() { alert_level = 0; }
+
+    #if ENABLED(STATUS_MESSAGE_SCROLLING)
+      static uint8_t status_scroll_offset;
+    #endif
+    static uint8_t lcd_status_update_delay;
+
+    #if HAS_LCD_CONTRAST
+      static int16_t contrast;
+      static void set_contrast(const int16_t value);
+      static inline void refresh_contrast() { set_contrast(contrast); }
+    #endif
+
+    #if ENABLED(FILAMENT_LCD_DISPLAY) && ENABLED(SDSUPPORT)
+      static millis_t next_filament_display;
+    #endif
+
+    static void quick_feedback(const bool clear_buttons=true);
+    static void completion_feedback(const bool good=true);
+
+    #if DISABLED(LIGHTWEIGHT_UI)
+      static void draw_status_message(const bool blink);
+    #endif
+
+    #if ENABLED(ADVANCED_PAUSE_FEATURE)
+      static void draw_hotend_status(const uint8_t row, const uint8_t extruder);
+    #endif
+
+    static bool hasstatus();
+    static bool get_blink();
+    static void status_screen();
+
+  #else // MALYAN_LCD, PANELDUE, EXTENSIBLE_UI, or NO LCD
+
+    static void refresh() {}
+    static inline void reset_alert_level() {}
+
+    #if ENABLED(EXTENSIBLE_UI)
+      static constexpr bool hasstatus() { return true; }
+    #endif
+
   #endif
 
   #if HAS_SPI_LCD || ENABLED(EXTENSIBLE_UI)
 
-    #if HAS_SPI_LCD
-
-      static bool detected();
-
-      static LCDViewAction lcdDrawUpdate;
-      static inline bool should_draw() { return bool(lcdDrawUpdate); }
-      static inline void refresh(const LCDViewAction type) { lcdDrawUpdate = type; }
-      static inline void refresh() { refresh(LCDVIEW_CLEAR_CALL_REDRAW); }
-
-      #if ENABLED(SHOW_BOOTSCREEN)
-        static void show_bootscreen();
-      #endif
-
-      #if HAS_GRAPHICAL_LCD
-
-        static bool drawing_screen, first_page;
-
-        static void set_font(const MarlinFont font_nr);
-
-      #else
-
-        static constexpr bool drawing_screen = false, first_page = true;
-
-        enum HD44780CharSet : uint8_t { CHARSET_MENU, CHARSET_INFO, CHARSET_BOOT };
-
-        static void set_custom_characters(
-          #if ENABLED(LCD_PROGRESS_BAR) || ENABLED(SHOW_BOOTSCREEN)
-            const HD44780CharSet screen_charset=CHARSET_INFO
-          #endif
-        );
-
-        #if ENABLED(LCD_PROGRESS_BAR)
-          static millis_t progress_bar_ms;  // Start time for the current progress bar cycle
-          #if PROGRESS_MSG_EXPIRE > 0
-            static millis_t MarlinUI::expire_status_ms; // = 0
-            static inline void reset_progress_bar_timeout() { expire_status_ms = 0; }
-          #endif
-          #define LCD_SET_CHARSET(C) set_custom_characters(C)
-        #else
-          #define LCD_SET_CHARSET(C) set_custom_characters()
-        #endif
-
-      #endif
-
-      // Status message
-      static char status_message[];
-      #if ENABLED(STATUS_MESSAGE_SCROLLING)
-        static uint8_t status_scroll_offset;
-      #endif
-      static bool hasstatus();
-
-      static uint8_t lcd_status_update_delay;
-      static uint8_t status_message_level;      // Higher levels block lower levels
-      static inline void reset_alert_level() { status_message_level = 0; }
-
-      #if HAS_PRINT_PROGRESS
-        #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
-          static uint8_t progress_bar_percent;
-          static void set_progress(const uint8_t progress) { progress_bar_percent = MIN(progress, 100); }
-        #endif
-        static uint8_t get_progress();
-      #else
-        static constexpr uint8_t get_progress() { return 0; }
-      #endif
-
-      #if HAS_LCD_CONTRAST
-        static int16_t contrast;
-        static void set_contrast(const int16_t value);
-        static inline void refresh_contrast() { set_contrast(contrast); }
-      #endif
-
-      #if ENABLED(FILAMENT_LCD_DISPLAY) && ENABLED(SDSUPPORT)
-        static millis_t next_filament_display;
-      #endif
-
-      static void quick_feedback(const bool clear_buttons=true);
-      static void completion_feedback(const bool good=true);
-
-      #if DISABLED(LIGHTWEIGHT_UI)
-        static void draw_status_message(const bool blink);
-      #endif
-
-      #if ENABLED(ADVANCED_PAUSE_FEATURE)
-        static void draw_hotend_status(const uint8_t row, const uint8_t extruder);
-      #endif
-
-      static void status_screen();
-
-    #else
-
-      static void refresh() {}
-      static inline void reset_alert_level() {}
-      static constexpr bool hasstatus() { return true; }
-
-    #endif
-
-    static bool get_blink();
     static void kill_screen(PGM_P const lcd_msg);
     static void draw_kill_screen();
-    static void setstatus(const char* const message, const bool persist=false);
-    static void setstatusPGM(PGM_P const message, const int8_t level=0);
     static void status_printf_P(const uint8_t level, PGM_P const fmt, ...);
-    static void reset_status();
 
-  #else // MALYAN_LCD or NO LCD
+  #else // MALYAN_LCD, PANELDUE, or NO LCD
 
-    static inline void refresh() {}
-    static inline void setstatus(const char* const message, const bool persist=false) { UNUSED(message); UNUSED(persist); }
-    static inline void setstatusPGM(PGM_P const message, const int8_t level=0) { UNUSED(message); UNUSED(level); }
-    static inline void status_printf_P(const uint8_t level, PGM_P const fmt, ...) { UNUSED(level); UNUSED(fmt); }
-    static inline void reset_status() {}
-    static inline void reset_alert_level() {}
     static constexpr bool hasstatus() { return false; }
+    static inline void status_printf_P(const uint8_t level, PGM_P const fmt, ...) { UNUSED(level); UNUSED(fmt); }
 
   #endif
 
@@ -504,6 +510,7 @@ private:
   static void _synchronize();
 
   #if HAS_SPI_LCD
+    static uint8_t alert_level;      // Higher levels block lower levels
     #if HAS_LCD_MENU
       #if LCD_TIMEOUT_TO_STATUS
         static bool defer_return_to_status;

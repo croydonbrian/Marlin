@@ -195,6 +195,7 @@
  * M405 - Enable Filament Sensor flow control. "M405 D<delay_cm>". (Requires FILAMENT_WIDTH_SENSOR)
  * M406 - Disable Filament Sensor flow control. (Requires FILAMENT_WIDTH_SENSOR)
  * M407 - Display measured filament diameter in millimeters. (Requires FILAMENT_WIDTH_SENSOR)
+ * M408 - Report machine state in JSON format. (Requires PANELDUE)
  * M410 - Quickstop. Abort all planned moves.
  * M412 - Enable / Disable filament runout detection. (Requires FILAMENT_RUNOUT_SENSOR)
  * M420 - Enable/Disable Leveling (with current values) S1=enable S0=disable (Requires MESH_BED_LEVELING or ABL)
@@ -707,6 +708,10 @@ private:
     static void M405();
     static void M406();
     static void M407();
+  #endif
+
+  #if ENABLED(PANELDUE)
+    static void M408();
   #endif
 
   #if ENABLED(FILAMENT_RUNOUT_SENSOR)

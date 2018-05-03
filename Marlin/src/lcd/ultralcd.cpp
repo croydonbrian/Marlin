@@ -23,7 +23,7 @@
 #include "../inc/MarlinConfigPre.h"
 
 // These displays all share the MarlinUI class
-#if HAS_SPI_LCD || ENABLED(MALYAN_LCD) || ENABLED(EXTENSIBLE_UI)
+#if HAS_SPI_LCD || ENABLED(PANELDUE) || ENABLED(MALYAN_LCD) || ENABLED(EXTENSIBLE_UI)
   #include "ultralcd.h"
   MarlinUI ui;
 #endif
@@ -44,6 +44,8 @@
 #include "../gcode/queue.h"
 
 #include "../Marlin.h"
+
+#include <stdarg.h>
 
 #if ENABLED(POWER_LOSS_RECOVERY)
  #include "../feature/power_loss_recovery.h"
@@ -85,14 +87,9 @@
 
 char MarlinUI::status_message[MAX_MESSAGE_LENGTH + 1];
 uint8_t MarlinUI::lcd_status_update_delay = 1; // First update one loop delayed
-uint8_t MarlinUI::status_message_level; // = 0
 
 #if ENABLED(FILAMENT_LCD_DISPLAY) && ENABLED(SDSUPPORT)
   millis_t MarlinUI::next_filament_display; // = 0
-#endif
-
-#if ENABLED(LCD_SET_PROGRESS_MANUALLY)
-  uint8_t MarlinUI::progress_bar_percent; // = 0
 #endif
 
 millis_t next_button_update_ms;
@@ -263,6 +260,8 @@ bool MarlinUI::get_blink() {
 
 #elif ENABLED(REPRAPWORLD_KEYPAD)
 
+  #include "../gcode/queue.h"
+
   #if HAS_LCD_MENU
 
     void lcd_move_x();
@@ -336,20 +335,6 @@ bool MarlinUI::get_blink() {
   #if PROGRESS_MSG_EXPIRE > 0
     millis_t MarlinUI::expire_status_ms; // = 0
   #endif
-#endif
-
-#if HAS_PRINT_PROGRESS
-  uint8_t MarlinUI::get_progress() {
-    #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
-      uint8_t &progress = progress_bar_percent;
-    #else
-      uint8_t progress = 0;
-    #endif
-    #if ENABLED(SDSUPPORT)
-      if (IS_SD_PRINTING()) progress = card.percentDone();
-    #endif
-    return progress;
-  }
 #endif
 
 void MarlinUI::status_screen() {
@@ -1089,8 +1074,10 @@ void MarlinUI::finishstatus(const bool persist) {
 
 bool MarlinUI::hasstatus() { return (status_message[0] != '\0'); }
 
+uint8_t MarlinUI::alert_level; // = 0
+
 void MarlinUI::setstatus(const char * const message, const bool persist) {
-  if (status_message_level > 0) return;
+  if (alert_level > 0) return;
 
   // Here we have a problem. The message is encoded in UTF8, so
   // arbitrarily cutting it will be a problem. We MUST be sure
@@ -1117,8 +1104,8 @@ void MarlinUI::setstatus(const char * const message, const bool persist) {
 #include <stdarg.h>
 
 void MarlinUI::status_printf_P(const uint8_t level, PGM_P const fmt, ...) {
-  if (level < status_message_level) return;
-  status_message_level = level;
+  if (level < alert_level) return;
+  alert_level = level;
   va_list args;
   va_start(args, fmt);
   vsnprintf_P(status_message, MAX_MESSAGE_LENGTH, fmt, args);
@@ -1127,9 +1114,9 @@ void MarlinUI::status_printf_P(const uint8_t level, PGM_P const fmt, ...) {
 }
 
 void MarlinUI::setstatusPGM(PGM_P const message, int8_t level) {
-  if (level < 0) level = status_message_level = 0;
-  if (level < status_message_level) return;
-  status_message_level = level;
+  if (level < 0) level = alert_level = 0;
+  if (level < alert_level) return;
+  alert_level = level;
 
   // Here we have a problem. The message is encoded in UTF8, so
   // arbitrarily cutting it will be a problem. We MUST be sure
@@ -1153,16 +1140,38 @@ void MarlinUI::setstatusPGM(PGM_P const message, int8_t level) {
   finishstatus(level > 0);
 }
 
-void MarlinUI::setalertstatusPGM(PGM_P const message) {
-  setstatusPGM(message, 1);
-  #if HAS_LCD_MENU
-    return_to_status();
-  #endif
-}
-
 #endif // HAS_SPI_LCD
 
-#if HAS_SPI_LCD || ENABLED(EXTENSIBLE_UI)
+#if HAS_SPI_LCD || ENABLED(PANELDUE)
+
+  #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
+    uint8_t MarlinUI::progress_percent; // = 0
+  #endif
+
+  #if HAS_PRINT_PROGRESS
+    uint8_t MarlinUI::get_progress() {
+      #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
+        uint8_t &progress = progress_percent;
+      #else
+        uint8_t progress = 0;
+      #endif
+      #if ENABLED(SDSUPPORT)
+        if (IS_SD_PRINTING()) progress = card.percentDone();
+      #endif
+      return progress;
+    }
+  #endif
+
+  void MarlinUI::setalertstatusPGM(PGM_P const message) {
+    setstatusPGM(message, 1);
+    #if HAS_LCD_MENU
+      return_to_status();
+    #endif
+  }
+
+#endif // HAS_SPI_LCD || PANELDUE
+
+#if HAS_SPI_LCD || ENABLED(MALYAN_LCD) || ENABLED(PANELDUE) || ENABLED(EXTENSIBLE_UI)
 
   #include "../module/printcounter.h"
 
@@ -1188,4 +1197,4 @@ void MarlinUI::setalertstatusPGM(PGM_P const message) {
     setstatusPGM(msg, -1);
   }
 
-#endif
+#endif // HAS_SPI_LCD || MALYAN_LCD || PANELDUE || EXTENSIBLE_UI
