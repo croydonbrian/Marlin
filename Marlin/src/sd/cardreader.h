@@ -84,6 +84,12 @@ public:
     #if NUM_SERIAL > 1
       const int8_t port = -1
     #endif
+    #if ENABLED(PANELDUE)
+      #if NUM_SERIAL > 1
+        ,
+      #endif
+      const bool json=false
+    #endif
   );
   void chdir(const char *relpath);
   int8_t updir();
@@ -234,6 +240,9 @@ private:
   void lsDive(const char *prepend, SdFile parent, const char * const match=NULL
     #if NUM_SERIAL > 1
       , const int8_t port = -1
+    #endif
+    #if ENABLED(PANELDUE)
+      , const bool json=false
     #endif
   );
 

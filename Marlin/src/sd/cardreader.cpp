@@ -97,9 +97,16 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
   #if NUM_SERIAL > 1
     , const int8_t port/*= -1*/
   #endif
+  #if ENABLED(PANELDUE)
+    , const bool json/*=false*/
+  #endif
 ) {
   dir_t p;
   uint8_t cnt = 0;
+
+  #if DISABLED(PANELDUE)
+    constexpr bool json = false;
+  #endif
 
   // Read the next entry from a directory
   while (parent.readDir(&p, longFilename) > 0) {
@@ -129,15 +136,23 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
       // and dive recursively into it.
       SdFile dir;
       if (!dir.open(&parent, dosFilename, O_READ)) {
-        if (lsAction == LS_SerialPrint) {
+        if (!json && lsAction == LS_SerialPrint) {
           SERIAL_ECHO_START_P(port);
           SERIAL_ECHOPGM_P(port, MSG_SD_CANT_OPEN_SUBDIR);
           SERIAL_ECHOLN_P(port, dosFilename);
         }
       }
+      if (json) {
+        SERIAL_CHAR_P(port, '"');
+        SERIAL_ECHO_P(port, dosFilename);
+        SERIAL_ECHOPGM_P(port, "\",");
+      }
       lsDive(path, dir
         #if NUM_SERIAL > 1
           , NULL, port
+        #endif
+        #if ENABLED(PANELDUE)
+          , json
         #endif
       );
       // close() is done automatically by destructor of SdFile
@@ -162,9 +177,20 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
         case LS_SerialPrint:
           createFilename(filename, p);
           if (prepend) SERIAL_PROTOCOL_P(port, prepend);
+
+          if (json) {
+            SERIAL_PROTOCOLCHAR_P(port, '"');
+            if (filenameIsDir) SERIAL_PROTOCOLCHAR_P(port, '*');
+          }
+
           SERIAL_PROTOCOL_P(port, filename);
-          SERIAL_PROTOCOLCHAR_P(port, ' ');
-          SERIAL_PROTOCOLLN_P(port, p.fileSize);
+
+          if (json) SERIAL_PROTOCOLPGM_P(port, "\",");
+
+          if (!json) {
+            SERIAL_PROTOCOLCHAR_P(port, ' ');
+            SERIAL_PROTOCOLLN_P(port, p.fileSize);
+          }
           break;
 
         case LS_GetFilename:
@@ -185,14 +211,32 @@ void CardReader::ls(
   #if NUM_SERIAL > 1
     const int8_t port
   #endif
+  #if ENABLED(PANELDUE)
+    #if NUM_SERIAL > 1
+      ,
+    #endif
+    const bool json/*=false*/
+  #endif
 ) {
+  #if DISABLED(PANELDUE)
+    constexpr bool json = false;
+  #endif
+
   lsAction = LS_SerialPrint;
   root.rewind();
+
+  if (json) SERIAL_ECHOPGM_P(port, "{\"dir\":\"\\/\",\"files\":[");
+
   lsDive(NULL, root
     #if NUM_SERIAL > 1
       , NULL, port
     #endif
+    #if ENABLED(PANELDUE)
+      , json
+    #endif
   );
+
+  if (json) SERIAL_ECHOPGM_P(port, "]}");
 }
 
 #if ENABLED(LONG_FILENAME_HOST_SUPPORT)

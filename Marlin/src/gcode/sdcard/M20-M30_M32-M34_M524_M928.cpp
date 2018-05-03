@@ -45,17 +45,38 @@
  * M20: List SD card to serial output
  */
 void GcodeSuite::M20() {
+  #if ENABLED(PANELDUE)
+    const bool json = parser.intval('S') == 2;
+  #else
+    constexpr bool json = false;
+  #endif
+
+  if (json) {
+    // The P parameter gives the path
+    char * const path = parser.stringval('P');
+    if (path < parser.stringval('S')) path == NULL;
+    // TODO: Call custom method in cardreader
+    //       that changes dir and lists contents
+    //       in JSON format
+  }
+
   #if NUM_SERIAL > 1
     const int16_t port = command_queue_port[cmd_queue_index_r];
   #endif
 
-  SERIAL_PROTOCOLLNPGM_P(port, MSG_BEGIN_FILE_LIST);
+  if (!json) SERIAL_PROTOCOLLNPGM_P(port, MSG_BEGIN_FILE_LIST);
   card.ls(
     #if NUM_SERIAL > 1
       port
     #endif
+    #if ENABLED(PANELDUE)
+      #if NUM_SERIAL > 1
+        ,
+      #endif
+      json
+    #endif
   );
-  SERIAL_PROTOCOLLNPGM_P(port, MSG_END_FILE_LIST);
+  if (!json) SERIAL_PROTOCOLLNPGM_P(port, MSG_END_FILE_LIST);
 }
 
 /**

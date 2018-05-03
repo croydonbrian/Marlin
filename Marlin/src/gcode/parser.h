@@ -236,6 +236,12 @@ public:
     return 0;
   }
 
+  // Code value as a string ptr
+  inline static char* stringval(const char c) {
+    const uint8_t ind = LETTER_BIT(c);
+    return (ind < COUNT(param) && TEST32(codebits, ind)) ? command_ptr + param[ind] : NULL;
+  }
+
   // Code value as a long or ulong
   static inline int32_t value_long() { return value_ptr ? strtol(value_ptr, NULL, 10) : 0L; }
   static inline uint32_t value_ulong() { return value_ptr ? strtoul(value_ptr, NULL, 10) : 0UL; }
