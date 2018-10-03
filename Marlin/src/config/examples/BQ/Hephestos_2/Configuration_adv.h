@@ -1327,12 +1327,12 @@
   #endif
 
   /**
-   * You can set your own advanced settings by filling in predefined functions.
-   * A list of available functions can be found on the library github page
-   * https://github.com/teemuatlut/TMC2130Stepper
-   * https://github.com/teemuatlut/TMC2208Stepper
+   * TMC advanced configuration
+   * Extra functions to use for TMC driver initialization.
+   * Available functions are listed at https://github.com/teemuatlut/TMCStepper
    *
    * Example:
+   *
    * #define TMC_ADV() { \
    *   stepperX.diag0_temp_prewarn(1); \
    *   stepperY.interpolate(0); \
