@@ -1924,6 +1924,12 @@ Black rubber belt(MXL), 18 - tooth aluminium pulley : 87.489 step per mm (Huxley
 //#define MALYAN_LCD
 
 //
+// PanelDue touch controller by Escher3D
+// http://escher3d.com/pages/order/products/product2.php
+//
+//#define PANELDUE
+
+//
 // CONTROLLER TYPE: Keypad / Add-on
 //
 
