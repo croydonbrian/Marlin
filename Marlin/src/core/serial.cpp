@@ -56,18 +56,29 @@ void serialprintln_onoff(const bool onoff) { serialprint_onoff(onoff); SERIAL_EO
 
   #include "enum.h"
 
-  void print_xyz(PGM_P const prefix, PGM_P const suffix, const float x, const float y, const float z) {
+  void print_xyz(PGM_P const prefix, PGM_P const suffix, const float x, const float y, const float z
+    #if ENABLED(E_HOMING_AXIS)
+	  , const float e
+    #endif
+  ) {
     serialprintPGM(prefix);
     SERIAL_CHAR('(');
     SERIAL_ECHO(x);
     SERIAL_ECHOPAIR(", ", y);
     SERIAL_ECHOPAIR(", ", z);
+    #if ENABLED(E_AXIS_HOMING)
+      SERIAL_ECHOPAIR(", ", e);
+    #endif
     SERIAL_CHAR(')');
     if (suffix) serialprintPGM(suffix); else SERIAL_EOL();
   }
 
   void print_xyz(PGM_P const prefix, PGM_P const suffix, const float xyz[]) {
-    print_xyz(prefix, suffix, xyz[X_AXIS], xyz[Y_AXIS], xyz[Z_AXIS]);
+    #if ENABLED(E_AXIS_HOMING)
+      print_xyz(prefix, suffix, xyz[X_AXIS], xyz[Y_AXIS], xyz[Z_AXIS], xyz[E_AXIS]);
+    #else
+      print_xyz(prefix, suffix, xyz[X_AXIS], xyz[Y_AXIS], xyz[Z_AXIS]);
+    #endif
   }
 
 #endif

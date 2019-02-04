@@ -36,7 +36,11 @@
 
 // Axis homed and known-position states
 extern uint8_t axis_homed, axis_known_position;
-constexpr uint8_t xyz_bits = _BV(X_AXIS) | _BV(Y_AXIS) | _BV(Z_AXIS);
+#if ENABLED(E_AXIS_HOMING)
+  constexpr uint8_t xyz_bits = _BV(X_AXIS) | _BV(Y_AXIS) | _BV(Z_AXIS) | _BV(E_AXIS);
+#else
+  constexpr uint8_t xyz_bits = _BV(X_AXIS) | _BV(Y_AXIS) | _BV(Z_AXIS);
+#endif
 FORCE_INLINE bool all_axes_homed() { return (axis_homed & xyz_bits) == xyz_bits; }
 FORCE_INLINE bool all_axes_known() { return (axis_known_position & xyz_bits) == xyz_bits; }
 FORCE_INLINE void set_all_unhomed() { axis_homed = 0; }
@@ -71,7 +75,11 @@ extern float cartes[XYZ];
  * Feed rates are often configured with mm/m
  * but the planner and stepper like mm/s units.
  */
-extern const float homing_feedrate_mm_s[XYZ];
+#if ENABLED(E_AXIS_HOMING)
+  extern const float homing_feedrate_mm_s[XYZE];
+#else
+  extern const float homing_feedrate_mm_s[XYZ];
+#endif
 FORCE_INLINE float homing_feedrate(const AxisEnum a) { return pgm_read_float(&homing_feedrate_mm_s[a]); }
 float get_homing_bump_feedrate(const AxisEnum axis);
 
@@ -97,11 +105,17 @@ extern int16_t feedrate_percentage;
 FORCE_INLINE float pgm_read_any(const float *p) { return pgm_read_float(p); }
 FORCE_INLINE signed char pgm_read_any(const signed char *p) { return pgm_read_byte(p); }
 
-#define XYZ_DEFS(type, array, CONFIG) \
-  extern const type array##_P[XYZ]; \
-  FORCE_INLINE type array(AxisEnum axis) { return pgm_read_any(&array##_P[axis]); } \
-  typedef void __void_##CONFIG##__
-
+#if ENABLED(E_AXIS_HOMING)
+  #define XYZ_DEFS(type, array, CONFIG) \
+    extern const type array##_P[XYZE]; \
+    FORCE_INLINE type array(AxisEnum axis) { return pgm_read_any(&array##_P[axis]); } \
+    typedef void __void_##CONFIG##__
+#else
+  #define XYZ_DEFS(type, array, CONFIG) \
+    extern const type array##_P[XYZ]; \
+    FORCE_INLINE type array(AxisEnum axis) { return pgm_read_any(&array##_P[axis]); } \
+    typedef void __void_##CONFIG##__
+#endif
 XYZ_DEFS(float, base_min_pos,   MIN_POS);
 XYZ_DEFS(float, base_max_pos,   MAX_POS);
 XYZ_DEFS(float, base_home_pos,  HOME_POS);
@@ -117,13 +131,24 @@ XYZ_DEFS(signed char, home_dir, HOME_DIR);
 
 #if HAS_SOFTWARE_ENDSTOPS
   extern bool soft_endstops_enabled;
-  extern float soft_endstop_min[XYZ], soft_endstop_max[XYZ];
-  void clamp_to_software_endstops(float target[XYZ]);
+  #if ENABLED(E_AXIS_HOMING)
+    extern float soft_endstop_min[XYZE], soft_endstop_max[XYZE];
+    void clamp_to_software_endstops(float target[XYZE]);
+  #else
+    extern float soft_endstop_min[XYZ], soft_endstop_max[XYZ];
+    void clamp_to_software_endstops(float target[XYZ]);
+  #endif
   void update_software_endstops(const AxisEnum axis);
 #else
   constexpr bool soft_endstops_enabled = false;
-  constexpr float soft_endstop_min[XYZ] = { X_MIN_BED, Y_MIN_BED, Z_MIN_POS },
-                  soft_endstop_max[XYZ] = { X_MAX_BED, Y_MAX_BED, Z_MAX_POS };
+  #if ENABLED(E_AXIS_HOMING)
+    constexpr float soft_endstop_min[XYZE] = { X_MIN_BED, Y_MIN_BED, Z_MIN_POS, E_MIN_POS },
+                    soft_endstop_max[XYZE] = { X_MAX_BED, Y_MAX_BED, Z_MAX_POS, E_MAX_POS };
+  #else
+    constexpr float soft_endstop_min[XYZ] = { X_MIN_BED, Y_MIN_BED, Z_MIN_POS },
+                    soft_endstop_max[XYZ] = { X_MAX_BED, Y_MAX_BED, Z_MAX_POS };
+  #endif
+  
   #define clamp_to_software_endstops(x) NOOP
   #define update_software_endstops(x) NOOP
 #endif
@@ -202,7 +227,11 @@ void clean_up_after_endstop_or_probe_move();
     ) || ENABLED(NO_MOTION_BEFORE_HOMING)
 
 #if HAS_AXIS_UNHOMED_ERR
-  bool axis_unhomed_error(const bool x=true, const bool y=true, const bool z=true);
+  #if ENABLED(E_AXIS_HOMING)
+    bool axis_unhomed_error(const bool x=true, const bool y=true, const bool z=true, const bool e=true);
+  #else
+    bool axis_unhomed_error(const bool x=true, const bool y=true, const bool z=true);
+  #endif
 #endif
 
 #if ENABLED(NO_MOTION_BEFORE_HOMING)
@@ -222,13 +251,25 @@ void homeaxis(const AxisEnum axis);
  */
 #if HAS_HOME_OFFSET || HAS_POSITION_SHIFT
   #if HAS_HOME_OFFSET
-    extern float home_offset[XYZ];
+    #if ENABLED(E_AXIS_HOMING)
+      extern float home_offset[XYZE];
+    #else
+      extern float home_offset[XYZ];  
+    #endif
   #endif
   #if HAS_POSITION_SHIFT
-    extern float position_shift[XYZ];
+    #if ENABLED(E_AXIS_HOMING)
+      extern float position_shift[XYZE];
+    #else
+      extern float position_shift[XYZ];  
+    #endif
   #endif
   #if HAS_HOME_OFFSET && HAS_POSITION_SHIFT
-    extern float workspace_offset[XYZ];
+    #if ENABLED(E_AXIS_HOMING)
+      extern float workspace_offset[XYZE];
+    #else
+      extern float workspace_offset[XYZ];
+    #endif
     #define WORKSPACE_OFFSET(AXIS) workspace_offset[AXIS]
   #elif HAS_HOME_OFFSET
     #define WORKSPACE_OFFSET(AXIS) home_offset[AXIS]
@@ -244,10 +285,16 @@ void homeaxis(const AxisEnum axis);
 #define LOGICAL_X_POSITION(POS) NATIVE_TO_LOGICAL(POS, X_AXIS)
 #define LOGICAL_Y_POSITION(POS) NATIVE_TO_LOGICAL(POS, Y_AXIS)
 #define LOGICAL_Z_POSITION(POS) NATIVE_TO_LOGICAL(POS, Z_AXIS)
+#if ENABLED(E_AXIS_HOMING)
+  #define LOGICAL_E_POSITION(POS) NATIVE_TO_LOGICAL(POS, E_AXIS)
+#endif
+
 #define RAW_X_POSITION(POS)     LOGICAL_TO_NATIVE(POS, X_AXIS)
 #define RAW_Y_POSITION(POS)     LOGICAL_TO_NATIVE(POS, Y_AXIS)
 #define RAW_Z_POSITION(POS)     LOGICAL_TO_NATIVE(POS, Z_AXIS)
-
+#if ENABLED(E_AXIS_HOMING)
+  #define RAW_E_POSITION(POS)     LOGICAL_TO_NATIVE(POS, E_AXIS)
+#endif
 /**
  * position_is_reachable family of functions
  */
