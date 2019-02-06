@@ -278,12 +278,11 @@ void GcodeSuite::G28(const bool always_home_all) {
     const bool homeX = always_home_all || parser.seen('X'),
                homeY = always_home_all || parser.seen('Y'),
                homeZ = always_home_all || parser.seen('Z'),
-			   homeE = always_home_all || parser.seen('E'),
-               #if ENABLED(E_AXIS_HOMING)
-                 home_all = (!homeX && !homeY && !homeZ && !homeE) || (homeX && homeY && homeZ && homeE);
-               #else
-                 home_all = (!homeX && !homeY && !homeZ) || (homeX && homeY && homeZ);
-               #endif
+               homeE = false
+                 #if ENABLED(E_AXIS_HOMING)
+                   || always_home_all || parser.seen('E')
+                 #endif
+               , home_all = (!homeX && !homeY && !homeZ && !homeE) || (homeX && homeY && homeZ && homeE);
 
     set_destination_from_current();
 
@@ -300,11 +299,7 @@ void GcodeSuite::G28(const bool always_home_all) {
           (parser.seenval('R') ? parser.value_linear_units() : Z_HOMING_HEIGHT)
     );
 
-      if (z_homing_height && (home_all || homeX || homeY
-        #if ENABLED(E_AXIS_HOMING)
-          || homeE
-        #endif
-      )) {
+    if (z_homing_height && (home_all || homeX || homeY || homeE)) {
       // Raise Z before homing any other axes and z is not already high enough (never lower z)
       destination[Z_AXIS] = z_homing_height;
       if (destination[Z_AXIS] > current_position[Z_AXIS]) {
@@ -388,34 +383,24 @@ void GcodeSuite::G28(const bool always_home_all) {
       } // home_all || homeZ
     #endif // Z_HOME_DIR < 0
 
-
+    #if ENABLED(E_AXIS_HOMING)
       // Home E
-    if (home_all || homeE) {
+      if (home_all || homeE) {
 
-      #if ENABLED(DUAL_X_CARRIAGE)
+        #if ENABLED(DUAL_X_CARRIAGE)
 
-        // Always home the 2nd (right) extruder first
-        active_extruder = 1;
-        homeaxis(E_AXIS);
+          // Always home the 2nd (right) extruder first
+          active_extruder = 1;
+          homeaxis(E_AXIS);
 
-        // Remember this extruder's position for later tool change
-        inactive_extruder_x_pos = current_position[X_AXIS];
+          // Home the 1st (left) extruder
+          active_extruder = 0;
 
-        // Home the 1st (left) extruder
-        active_extruder = 0;
-        homeaxis(E_AXIS);
-
-        // Consider the active extruder to be parked
-        COPY(raised_parked_position, current_position);
-        delayed_move_time = 0;
-        active_extruder_parked = true;
-
-      #else
+        #endif
 
         homeaxis(E_AXIS);
-
-      #endif
       }
+    #endif
 
     sync_plan_position();
 

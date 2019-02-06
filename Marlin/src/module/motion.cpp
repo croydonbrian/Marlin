@@ -59,11 +59,8 @@
   #include "../feature/fwretract.h"
 #endif
 
-#if ENABLED(E_AXIS_HOMING)
-  #define XYZ_CONSTS(type, array, CONFIG) const PROGMEM type array##_P[XYZE] = { X_##CONFIG, Y_##CONFIG, Z_##CONFIG, E_##CONFIG }
-#else
-  #define XYZ_CONSTS(type, array, CONFIG) const PROGMEM type array##_P[XYZ] = { X_##CONFIG, Y_##CONFIG, Z_##CONFIG }
-#endif
+#define XYZ_CONSTS(type, array, CONFIG) const PROGMEM type array##_P[LINEAR_AXES] = \
+                                          ARRAY_N(LINEAR_AXES, X_##CONFIG, Y_##CONFIG, Z_##CONFIG, E_##CONFIG)
 XYZ_CONSTS(float, base_min_pos,   MIN_POS);
 XYZ_CONSTS(float, base_max_pos,   MAX_POS);
 XYZ_CONSTS(float, base_home_pos,  HOME_POS);
@@ -119,19 +116,15 @@ float feedrate_mm_s = MMM_TO_MMS(1500.0f);
 
 int16_t feedrate_percentage = 100;
 
-// Homing feedrate is const progmem - compare to constexpr in the header 
-#if ENABLED(E_AXIS_HOMING)
-  const float homing_feedrate_mm_s[XYZE] PROGMEM = {
-#else
-  const float homing_feedrate_mm_s[XYZ] PROGMEM = {
-#endif
+// Homing feedrate is const progmem - compare to constexpr in the header
+const float homing_feedrate_mm_s[LINEAR_AXES] PROGMEM = {
   #if ENABLED(DELTA)
-    MMM_TO_MMS(HOMING_FEEDRATE_Z), MMM_TO_MMS(HOMING_FEEDRATE_Z),
+    MMM_TO_MMS(HOMING_FEEDRATE_Z), MMM_TO_MMS(HOMING_FEEDRATE_Z)
   #else
-    MMM_TO_MMS(HOMING_FEEDRATE_XY), MMM_TO_MMS(HOMING_FEEDRATE_XY),
+    MMM_TO_MMS(HOMING_FEEDRATE_XY), MMM_TO_MMS(HOMING_FEEDRATE_XY)
   #endif
-  MMM_TO_MMS(HOMING_FEEDRATE_Z)
-  #if ENABLED(E_AXIS_HOMING)  
+  , MMM_TO_MMS(HOMING_FEEDRATE_Z)
+  #if ENABLED(E_AXIS_HOMING)
     , MMM_TO_MMS(HOMING_FEEDRATE_E)
   #endif
 };
@@ -153,28 +146,18 @@ float cartes[XYZ];
  */
 #if HAS_POSITION_SHIFT
   // The distance that XYZ has been offset by G92. Reset by G28.
-  #if ENABLED(E_AXIS_HOMING)
-    float position_shift[XYZE] = { 0 };
-  #else
-    float position_shift[XYZ] = { 0 };
-  #endif
+  float position_shift[LINEAR_AXES] = { 0 };
 #endif
+
 #if HAS_HOME_OFFSET
   // This offset is added to the configured home position.
   // Set by M206, M428, or menu item. Saved to EEPROM.
-  #if ENABLED(E_AXIS_HOMING)
-    float home_offset[XYZE] = { 0 };
-  #else
-    float home_offset[XYZ] = { 0 };
-  #endif
+  float home_offset[LINEAR_AXES] = { 0 };
 #endif
+
 #if HAS_HOME_OFFSET && HAS_POSITION_SHIFT
   // The above two are combined to save on computes
-  #if ENABLED(E_AXIS_HOMING)
-    float workspace_offset[XYZE] = { 0 };
-  #else
-    float workspace_offset[XYZ] = { 0 };
-  #endif
+  float workspace_offset[LINEAR_AXES] = { 0 };
 #endif
 
 #if OLDSCHOOL_ABL
@@ -189,7 +172,7 @@ void report_current_position() {
   SERIAL_ECHOPAIR(" Y:", LOGICAL_Y_POSITION(current_position[Y_AXIS]));
   SERIAL_ECHOPAIR(" Z:", LOGICAL_Z_POSITION(current_position[Z_AXIS]));
   #if ENABLED(E_AXIS_HOMING)
-    SERIAL_ECHOPAIR(" E:", current_position[E_AXIS]);
+    SERIAL_ECHOPAIR(" E:", LOGICAL_E_POSITION(current_position[E_AXIS]));
   #endif
   stepper.report_positions();
 
@@ -323,11 +306,11 @@ void do_blocking_move_to(const float rx, const float ry, const float rz, const f
   const float old_feedrate_mm_s = feedrate_mm_s;
 
   #if ENABLED(DEBUG_LEVELING_FEATURE)
-    #if ENABLED(E_AXIS_HOMING)
-      if (DEBUGGING(LEVELING)) print_xyz(PSTR(">>> do_blocking_move_to"), NULL, rx, ry, rz, 0);
-    #else
-      if (DEBUGGING(LEVELING)) print_xyz(PSTR(">>> do_blocking_move_to"), NULL, rx, ry, rz);
-    #endif
+    if (DEBUGGING(LEVELING)) print_xyz(PSTR(">>> do_blocking_move_to"), NULL, rx, ry, rz
+      #if ENABLED(E_AXIS_HOMING)
+        , 0
+      #endif
+    );
   #endif
 
   const float z_feedrate = fr_mm_s ? fr_mm_s : homing_feedrate(Z_AXIS);
@@ -481,13 +464,9 @@ void clean_up_after_endstop_or_probe_move() { bracket_probe_move(false); }
   bool soft_endstops_enabled = true;
 
   // Software Endstops are based on the configured limits.
-  #if ENABLED(E_AXIS_HOMING)
-    float soft_endstop_min[XYZE] = { X_MIN_BED, Y_MIN_BED, Z_MIN_POS, E_MIN_POS },
-          soft_endstop_max[XYZE] = { X_MAX_BED, Y_MAX_BED, Z_MAX_POS, E_MAX_POS };
-  #else
-    float soft_endstop_min[XYZ] = { X_MIN_BED, Y_MIN_BED, Z_MIN_POS },
-          soft_endstop_max[XYZ] = { X_MAX_BED, Y_MAX_BED, Z_MAX_POS };
-  #endif
+  float soft_endstop_min[LINEAR_AXES] = ARRAY_N(LINEAR_AXES, X_MIN_BED, Y_MIN_BED, Z_MIN_POS, E_MIN_POS),
+        soft_endstop_max[LINEAR_AXES] = ARRAY_N(LINEAR_AXES, X_MAX_BED, Y_MAX_BED, Z_MAX_POS, E_MAX_POS);
+
   #if IS_KINEMATIC
     float soft_endstop_radius, soft_endstop_radius_2;
   #endif
@@ -498,13 +477,7 @@ void clean_up_after_endstop_or_probe_move() { bracket_probe_move(false); }
    * For DELTA/SCARA the XY constraint is based on the smallest
    * radius within the set software endstops.
    */
-  void clamp_to_software_endstops(float
-    #if ENABLED(E_AXIS_HOMING)
-      target[XYZE]
-    #else
-      target[XYZ]
-    #endif
-  ) {
+  void clamp_to_software_endstops(float target[LINEAR_AXES]) {
     if (!soft_endstops_enabled) return;
     #if IS_KINEMATIC
       const float dist_2 = HYPOT2(target[X_AXIS], target[Y_AXIS]);
@@ -1048,44 +1021,42 @@ void prepare_move_to_destination() {
     #if ENABLED(E_AXIS_HOMING)
       , const bool e/*=true*/
     #endif
-  ){
+  ) {
     #if ENABLED(HOME_AFTER_DEACTIVATE)
       const bool xx = x && !TEST(axis_known_position, X_AXIS),
                  yy = y && !TEST(axis_known_position, Y_AXIS),
-                 zz = z && !TEST(axis_known_position, Z_AXIS);
-      #if ENABLED(E_AXIS_HOMING)
-        const bool ee = e && !TEST(axis_known_position, E_AXIS);
-      #endif
+                 zz = z && !TEST(axis_known_position, Z_AXIS),
+                 ee = false
+                   #if ENABLED(E_AXIS_HOMING)
+                     || (e && !TEST(axis_known_position, E_AXIS))
+                   #endif
+                 ;
     #else
       const bool xx = x && !TEST(axis_homed, X_AXIS),
                  yy = y && !TEST(axis_homed, Y_AXIS),
-                 zz = z && !TEST(axis_homed, Z_AXIS);
-       #if ENABLED(E_AXIS_HOMING)
-         const bool ee = e && !TEST(axis_homed, E_AXIS);
-       #endif
+                 zz = z && !TEST(axis_homed, Z_AXIS),
+                 ee = false
+                   #if ENABLED(E_AXIS_HOMING)
+                     || (e && !TEST(axis_homed, E_AXIS))
+                   #endif
+                 ;
     #endif
 
-    if (xx || yy || zz
-      #if ENABLED(E_AXIS_HOMING)
-        || ee
-      #endif
-    ) {
+    if (xx || yy || zz || ee) {
       SERIAL_ECHO_START();
       SERIAL_ECHOPGM(MSG_HOME " ");
       if (xx) SERIAL_ECHOPGM(MSG_X);
       if (yy) SERIAL_ECHOPGM(MSG_Y);
       if (zz) SERIAL_ECHOPGM(MSG_Z);
-      #if ENABLED(E_AXIS_HOMING)
-        if (ee) SERIAL_ECHOPGM(MSG_E);
-      #endif
+      if (ee) SERIAL_ECHOPGM(MSG_E);
       SERIAL_ECHOLNPGM(" " MSG_FIRST);
 
       #if ENABLED(ULTRA_LCD) || ENABLED(EXTENSIBLE_UI)
-        #if ENABLED(E_AXIS_HOMING)
-          ui.status_printf_P(0, PSTR(MSG_HOME " %s%s%s%s " MSG_FIRST), xx ? MSG_X : "", yy ? MSG_Y : "", zz ? MSG_Z : "", ee ? MSG_E : "");
-        #else
-          ui.status_printf_P(0, PSTR(MSG_HOME " %s%s%s " MSG_FIRST), xx ? MSG_X : "", yy ? MSG_Y : "", zz ? MSG_Z : "");
-        #endif
+        ui.status_printf_P(0, PSTR(MSG_HOME " %s%s%s%s " MSG_FIRST), xx ? MSG_X : "", yy ? MSG_Y : "", zz ? MSG_Z : ""
+          #if ENABLED(E_AXIS_HOMING)
+            , ee ? MSG_E : ""
+          #endif
+        );
       #endif
       return true;
     }
@@ -1462,11 +1433,11 @@ void homeaxis(const AxisEnum axis) {
   #else
     #define CAN_HOME(A) \
       (axis == _AXIS(A) && ((A##_MIN_PIN > -1 && A##_HOME_DIR < 0) || (A##_MAX_PIN > -1 && A##_HOME_DIR > 0)))
-    #if ENABLED(E_AXIS_HOMING)
-      if (!CAN_HOME(X) && !CAN_HOME(Y) && !CAN_HOME(Z) && !CAN_HOME(E)) return;
-    #else
-      if (!CAN_HOME(X) && !CAN_HOME(Y) && !CAN_HOME(Z)) return;
-    #endif
+      if (!CAN_HOME(X) && !CAN_HOME(Y) && !CAN_HOME(Z)
+        #if ENABLED(E_AXIS_HOMING)
+          && !CAN_HOME(E)
+        #endif
+      ) return;
   #endif
 
   #if ENABLED(DEBUG_LEVELING_FEATURE)

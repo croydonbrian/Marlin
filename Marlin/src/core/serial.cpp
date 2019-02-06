@@ -58,7 +58,7 @@ void serialprintln_onoff(const bool onoff) { serialprint_onoff(onoff); SERIAL_EO
 
   void print_xyz(PGM_P const prefix, PGM_P const suffix, const float x, const float y, const float z
     #if ENABLED(E_HOMING_AXIS)
-	  , const float e
+      , const float e
     #endif
   ) {
     serialprintPGM(prefix);
@@ -74,11 +74,11 @@ void serialprintln_onoff(const bool onoff) { serialprint_onoff(onoff); SERIAL_EO
   }
 
   void print_xyz(PGM_P const prefix, PGM_P const suffix, const float xyz[]) {
-    #if ENABLED(E_AXIS_HOMING)
-      print_xyz(prefix, suffix, xyz[X_AXIS], xyz[Y_AXIS], xyz[Z_AXIS], xyz[E_AXIS]);
-    #else
-      print_xyz(prefix, suffix, xyz[X_AXIS], xyz[Y_AXIS], xyz[Z_AXIS]);
-    #endif
+    print_xyz(prefix, suffix, xyz[X_AXIS], xyz[Y_AXIS], xyz[Z_AXIS]
+      #if ENABLED(E_AXIS_HOMING)
+        , xyz[E_AXIS]
+      #endif
+    );
   }
 
 #endif
