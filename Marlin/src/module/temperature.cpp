@@ -1930,14 +1930,18 @@ void Temperature::readings_ready() {
 
   #define TEMPDIR(N) ((HEATER_##N##_RAW_LO_TEMP) > (HEATER_##N##_RAW_HI_TEMP) ? -1 : 1)
 
-  int constexpr temp_dir[] = {
+  constexpr int8_t temp_dir[] = {
     #if ENABLED(HEATER_0_USES_MAX6675)
-       0
+      0
     #else
       TEMPDIR(0)
     #endif
     #if HOTENDS > 1
-      , TEMPDIR(1)
+      #if ENABLED(HEATER_1_USES_MAX6675)
+        , 0
+      #else
+        , TEMPDIR(1)
+      #endif
       #if HOTENDS > 2
         , TEMPDIR(2)
         #if HOTENDS > 3
@@ -1954,23 +1958,26 @@ void Temperature::readings_ready() {
   };
 
   for (uint8_t e = 0; e < COUNT(temp_dir); e++) {
-    const int16_t tdir = temp_dir[e], rawtemp = current_temperature_raw[e] * tdir;
-    const bool heater_on = (target_temperature[e] > 0)
-      #if ENABLED(PIDTEMP)
-        || (soft_pwm_amount[e] > 0)
-      #endif
-    ;
-    if (rawtemp > maxttemp_raw[e] * tdir) max_temp_error(e);
-    if (rawtemp < minttemp_raw[e] * tdir && !is_preheating(e) && heater_on) {
+    const int8_t dir = temp_dir[e];
+    if (dir) {
+      const int16_t rawtemp = current_temperature_raw[e];
+      const bool heater_on = (target_temperature[e] > 0
+        #if ENABLED(PIDTEMP)
+          || soft_pwm_amount[e] > 0
+        #endif
+      );
+      if (dir < 0 ? rawtemp < maxttemp_raw[e] : rawtemp > maxttemp_raw[e]) max_temp_error(e);
+      if ((dir < 0 ? rawtemp > minttemp_raw[e] : rawtemp < minttemp_raw[e]) && !is_preheating(e) && heater_on) {
+        #ifdef MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED
+          if (++consecutive_low_temperature_error[e] >= MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED)
+        #endif
+            min_temp_error(e);
+      }
       #ifdef MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED
-        if (++consecutive_low_temperature_error[e] >= MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED)
+        else
+          consecutive_low_temperature_error[e] = 0;
       #endif
-          min_temp_error(e);
     }
-    #ifdef MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED
-      else
-        consecutive_low_temperature_error[e] = 0;
-    #endif
   }
 
   #if HAS_HEATED_BED
