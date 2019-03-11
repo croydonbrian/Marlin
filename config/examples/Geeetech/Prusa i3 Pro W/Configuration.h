@@ -1822,6 +1822,11 @@
 //#define MINIPANEL
 
 //
+// FYSETC Mini Panel (ST7567)
+//
+//#define FYSETC_MINI_12864_PANEL
+
+//
 // MaKr3d Makr-Panel with graphic controller and SD support.
 // http://reprap.org/wiki/MaKr3d_MaKrPanel
 //
@@ -2038,10 +2043,10 @@
 //#define RGBW_LED
 
 #if ENABLED(RGB_LED) || ENABLED(RGBW_LED)
-  #define RGB_LED_R_PIN 34
-  #define RGB_LED_G_PIN 43
-  #define RGB_LED_B_PIN 35
-  #define RGB_LED_W_PIN -1
+  //#define RGB_LED_R_PIN 34
+  //#define RGB_LED_G_PIN 43
+  //#define RGB_LED_B_PIN 35
+  //#define RGB_LED_W_PIN -1
 #endif
 
 // Support for Adafruit Neopixel LED driver

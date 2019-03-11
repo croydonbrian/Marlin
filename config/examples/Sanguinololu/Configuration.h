@@ -1853,6 +1853,11 @@
 //#define MINIPANEL
 
 //
+// FYSETC Mini Panel (ST7567)
+//
+//#define FYSETC_MINI_12864_PANEL
+
+//
 // MaKr3d Makr-Panel with graphic controller and SD support.
 // http://reprap.org/wiki/MaKr3d_MaKrPanel
 //
