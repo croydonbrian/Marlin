@@ -229,11 +229,12 @@
   #define PS_ON_PIN        12
 #endif
 
+#define AUX2_PINS_FREE !( ENABLED(ULTRA_LCD) && ENABLED(NEWPANEL) && (ENABLED(PANEL_ONE) || ENABLED(VIKI2) || ENABLED(miniVIKI) || ENABLED(MINIPANEL) || ENABLED(REPRAPWORLD_KEYPAD)) )
+
 #if ENABLED(CASE_LIGHT_ENABLE) && !defined(CASE_LIGHT_PIN) && !defined(SPINDLE_LASER_ENABLE_PIN)
   #if NUM_SERVOS <= 1 // try to use servo connector first
     #define CASE_LIGHT_PIN    6   // MUST BE HARDWARE PWM
-  #elif !(ENABLED(ULTRA_LCD) && ENABLED(NEWPANEL) \
-      && (ENABLED(PANEL_ONE) || ENABLED(VIKI2) || ENABLED(miniVIKI) || ENABLED(MINIPANEL) || ENABLED(REPRAPWORLD_KEYPAD)))  // try to use AUX 2
+  #elif AUX2_PINS_FREE
     #define CASE_LIGHT_PIN   44   // MUST BE HARDWARE PWM
   #endif
 #endif
@@ -246,13 +247,14 @@
     #define SPINDLE_LASER_ENABLE_PIN  4   // Pin should have a pullup/pulldown!
     #define SPINDLE_LASER_PWM_PIN     6   // MUST BE HARDWARE PWM
     #define SPINDLE_DIR_PIN           5
-  #elif !(ENABLED(ULTRA_LCD) && ENABLED(NEWPANEL) \
-      && (ENABLED(PANEL_ONE) || ENABLED(VIKI2) || ENABLED(miniVIKI) || ENABLED(MINIPANEL) || ENABLED(REPRAPWORLD_KEYPAD)))  // try to use AUX 2
+  #elif AUX2_PINS_FREE
     #define SPINDLE_LASER_ENABLE_PIN 40   // Pin should have a pullup/pulldown!
     #define SPINDLE_LASER_PWM_PIN    44   // MUST BE HARDWARE PWM
     #define SPINDLE_DIR_PIN          65
   #endif
 #endif
+
+#undef AUX2_PINS_FREE
 
 //
 // TMC software SPI
@@ -367,6 +369,12 @@
       #if DISABLED(NEWPANEL)
         #define BEEPER_PIN      37
       #endif
+
+    #elif ENABLED(FYSETC_MINI_12864_PANEL)
+
+      #define LCD_PINS_RS       23
+      #define DOGLCD_CS         17
+      #define DOGLCD_A0         16
 
     #elif ENABLED(ZONESTAR_LCD)
 
@@ -518,27 +526,51 @@
       #define SD_DETECT_PIN     49
       #define KILL_PIN          64
 
+    #elif ENABLED(FYSETC_MINI_12864_PANEL)
+
+      #define DOGLCD_CS         17
+      #define DOGLCD_A0         16
+      //#define DOGLCD_SCK      52
+      //#define DOGLCD_MOSI     51
+      //#define DOGLCD_MISO     50
+
+      #define SD_DETECT_PIN     49
+
+      #define BEEPER_PIN        37
+      #define KILL_PIN          41
+      #define BTN_EN1           31
+      #define BTN_EN2           33
+      #define BTN_ENC           35
+      #ifndef RGB_LED_R_PIN
+        #define RGB_LED_R_PIN   25
+      #endif
+      #ifndef RGB_LED_G_PIN
+        #define RGB_LED_G_PIN   27
+      #endif
+      #ifndef RGB_LED_B_PIN
+        #define RGB_LED_B_PIN   29
+      #endif
+
     #elif ENABLED(MINIPANEL)
 
-      #define BEEPER_PIN        42
-      // not connected to a pin
-      #define LCD_BACKLIGHT_PIN 65   // backlight LED on A11/D65
+      #define SD_DETECT_PIN     49
 
+      #define BEEPER_PIN        42
+      #define KILL_PIN          64
       #define DOGLCD_A0         44
       #define DOGLCD_CS         66
+      #define BTN_EN1           40
+      #define BTN_EN2           63
+      #define BTN_ENC           59
+
+      // not connected to a pin
+      #define LCD_BACKLIGHT_PIN 65   // backlight LED on A11/D65
 
       // GLCD features
       // Uncomment screen orientation
       //#define LCD_SCREEN_ROT_90
       //#define LCD_SCREEN_ROT_180
       //#define LCD_SCREEN_ROT_270
-
-      #define BTN_EN1           40
-      #define BTN_EN2           63
-      #define BTN_ENC           59
-
-      #define SD_DETECT_PIN     49
-      #define KILL_PIN          64
 
     #elif ENABLED(ZONESTAR_LCD)
 

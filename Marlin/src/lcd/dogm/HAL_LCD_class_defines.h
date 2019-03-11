@@ -25,6 +25,19 @@
 
 // use this file to create the public interface for device drivers that are NOT in the U8G library
 
+extern u8g_dev_t u8g_dev_st7567_HAL_2x_sw_spi;
+extern u8g_dev_t u8g_dev_st7567_HAL_2x_hw_spi;
+
+class U8GLIB_ST7567_2X_HAL : public U8GLIB {
+public:
+  U8GLIB_ST7567_2X_HAL(pin_t sck, pin_t mosi, pin_t cs, pin_t a0, pin_t reset = U8G_PIN_NONE)
+    : U8GLIB(&u8g_dev_st7567_HAL_2x_sw_spi, (uint8_t)sck, (uint8_t)mosi, (uint8_t)cs, (uint8_t)a0, (uint8_t)reset)
+    { }
+  U8GLIB_ST7567_2X_HAL(pin_t cs, pin_t a0, pin_t reset = U8G_PIN_NONE)
+    : U8GLIB(&u8g_dev_st7567_HAL_2x_hw_spi, (uint8_t)cs, (uint8_t)a0, (uint8_t)reset)
+    { }
+};
+
 extern u8g_dev_t u8g_dev_st7565_64128n_HAL_2x_sw_spi;
 extern u8g_dev_t u8g_dev_st7565_64128n_HAL_2x_hw_spi;
 
